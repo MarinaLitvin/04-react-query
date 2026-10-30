@@ -10,16 +10,17 @@ interface FetchMoviesResponse {
 
 const ACCESS_TOKEN = import.meta.env.VITE_TMDB_TOKEN;
 
-console.log("Token loaded:", Boolean(ACCESS_TOKEN));
-console.log("Token length:", ACCESS_TOKEN?.length);
-
-export async function fetchMovies(query: string): Promise<Movie[]> {
+export async function fetchMovies(
+  query: string,
+  page: number,
+): Promise<FetchMoviesResponse> {
   try {
     const response = await axios.get<FetchMoviesResponse>(
       "https://api.themoviedb.org/3/search/movie",
       {
         params: {
           query,
+          page,
         },
         headers: {
           Authorization: `Bearer ${ACCESS_TOKEN}`,
@@ -27,7 +28,7 @@ export async function fetchMovies(query: string): Promise<Movie[]> {
       },
     );
 
-    return response.data.results;
+    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.log("TMDB error:", error.response?.data);

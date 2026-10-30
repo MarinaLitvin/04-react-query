@@ -1,0 +1,768 @@
+
+
+========== FILE: ./eslint.config.js ==========
+
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
+])
+
+
+========== FILE: ./index.html ==========
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>03-react-movie</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
+========== FILE: ./package.json ==========
+
+{
+  "name": "03-react-movie",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.105.0",
+    "axios": "^1.21.0",
+    "modern-normalize": "^3.0.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-hot-toast": "^2.6.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@eslint/js": "^10.0.1",
+    "@rolldown/plugin-babel": "^0.2.4",
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4"
+  }
+}
+
+
+========== FILE: ./src/components/App/App.module.css ==========
+
+.app {
+  padding: 0 16px;
+}
+
+
+========== FILE: ./src/components/App/App.tsx ==========
+
+import { useCallback, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import SearchBar from "../SearchBar/SearchBar";
+import MovieGrid from "../MovieGrid/MovieGrid";
+import Loader from "../Loader/Loader";
+import ErrorMessage from "../ErrorMessage/ErrorMessage";
+import MovieModal from "../MovieModal/MovieModal";
+import { fetchMovies } from "../../services/movieService";
+import type { Movie } from "../../types/movie";
+import styles from "./App.module.css";
+
+export default function App() {
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+
+  const handleSearch = async (query: string) => {
+    setMovies([]);
+    setSelectedMovie(null);
+    setIsLoading(true);
+    setIsError(false);
+
+    try {
+      const result = await fetchMovies(query);
+
+      if (result.length === 0) {
+        toast.error("No movies found for your request.");
+      }
+
+      setMovies(result);
+    } catch {
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelect = (movie: Movie) => {
+    setSelectedMovie(movie);
+  };
+
+  const handleClose = useCallback(() => {
+    setSelectedMovie(null);
+  }, []);
+
+  return (
+    <div className={styles.app}>
+      <Toaster position="top-right" />
+
+      <SearchBar onSubmit={handleSearch} />
+
+      <main>
+        {isLoading && <Loader />}
+
+        {isError && !isLoading && <ErrorMessage />}
+
+        {!isLoading && !isError && movies.length > 0 && (
+          <MovieGrid movies={movies} onSelect={handleSelect} />
+        )}
+
+        {selectedMovie && (
+          <MovieModal movie={selectedMovie} onClose={handleClose} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+
+========== FILE: ./src/components/ErrorMessage/ErrorMessage.module.css ==========
+
+.text {
+  font-size: 16px;
+  text-align: center;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 12px 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: #d32f2f;
+  background-color: #fdecea;
+  border-color: #f5c2c0;
+}
+
+
+========== FILE: ./src/components/ErrorMessage/ErrorMessage.tsx ==========
+
+import styles from "./ErrorMessage.module.css";
+
+export default function ErrorMessage() {
+  return <p className={styles.text}>There was an error, please try again...</p>;
+}
+
+
+========== FILE: ./src/components/Loader/Loader.module.css ==========
+
+.text {
+  font-size: 16px;
+  text-align: center;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 12px 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: #084298;
+  background-color: #e8f4fd;
+  border-color: #b6d4fe;
+}
+
+
+========== FILE: ./src/components/Loader/Loader.tsx ==========
+
+import styles from "./Loader.module.css";
+
+export default function Loader() {
+  return <p className={styles.text}>Loading movies, please wait...</p>;
+}
+
+
+========== FILE: ./src/components/MovieGrid/MovieGrid.module.css ==========
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  max-width: 1440px;
+  margin: 0 auto;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  padding-bottom: 20px;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  background-color: #222;
+}
+
+.card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.image {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.title {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px;
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.85);
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  box-sizing: border-box;
+  text-align: center;
+  transition: background 0.3s ease;
+}
+
+.card:hover .title {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+
+========== FILE: ./src/components/MovieGrid/MovieGrid.tsx ==========
+
+import type { Movie } from "../../types/movie";
+import styles from "./MovieGrid.module.css";
+
+interface MovieGridProps {
+  movies: Movie[];
+  onSelect: (movie: Movie) => void;
+}
+
+export default function MovieGrid({ movies, onSelect }: MovieGridProps) {
+  return (
+    <ul className={styles.grid}>
+      {movies.map((movie) => (
+        <li key={movie.id}>
+          <div className={styles.card} onClick={() => onSelect(movie)}>
+            <img
+              className={styles.image}
+              src={
+                movie.poster_path
+                  ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                  : undefined
+              }
+              alt={movie.title}
+            />
+
+            <h2 className={styles.title}>{movie.title}</h2>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+
+========== FILE: ./src/components/MovieModal/MovieModal.module.css ==========
+
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  background-color: #222;
+  width: 60vw;
+  min-width: 400px;
+  max-width: 800px;
+  height: 80vh;
+  min-height: 300px;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.content p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.closeButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+.closeButton:focus {
+  outline: 2px solid #007bff;
+}
+
+
+========== FILE: ./src/components/MovieModal/MovieModal.tsx ==========
+
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import type { MouseEvent } from "react";
+import type { Movie } from "../../types/movie";
+import styles from "./MovieModal.module.css";
+
+interface MovieModalProps {
+  movie: Movie;
+  onClose: () => void;
+}
+
+export default function MovieModal({ movie, onClose }: MovieModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
+  return createPortal(
+    <div
+      className={styles.backdrop}
+      role="dialog"
+      aria-modal="true"
+      onClick={handleBackdropClick}
+    >
+      <div className={styles.modal}>
+        <button
+          className={styles.closeButton}
+          type="button"
+          aria-label="Close modal"
+          onClick={onClose}
+        >
+          &times;
+        </button>
+
+        {movie.backdrop_path && (
+          <img
+            src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+            alt={movie.title}
+            className={styles.image}
+          />
+        )}
+
+        <div className={styles.content}>
+          <h2>{movie.title}</h2>
+
+          <p>{movie.overview}</p>
+
+          <p>
+            <strong>Release Date:</strong> {movie.release_date || "Unknown"}
+          </p>
+
+          <p>
+            <strong>Rating:</strong> {movie.vote_average}/10
+          </p>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+
+========== FILE: ./src/components/SearchBar/SearchBar.module.css ==========
+
+.header {
+  padding: 20px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.link {
+  font-size: 16px;
+  font-weight: 500;
+  color: #0a66c2;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.link:hover {
+  color: #004182;
+  text-decoration: underline;
+}
+
+.form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.input {
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 240px;
+}
+
+.button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #0a66c2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background-color: #004182;
+}
+
+
+========== FILE: ./src/components/SearchBar/SearchBar.tsx ==========
+
+import toast from "react-hot-toast";
+import styles from "./SearchBar.module.css";
+
+interface SearchBarProps {
+  onSubmit: (query: string) => void;
+}
+
+export default function SearchBar({ onSubmit }: SearchBarProps) {
+  async function handleSearch(formData: FormData) {
+    const query = String(formData.get("query") ?? "").trim();
+
+    if (!query) {
+      toast.error("Please enter your search query.");
+      return;
+    }
+
+    onSubmit(query);
+  }
+
+  return (
+    <header className={styles.header}>
+      <div className={styles.container}>
+        <a
+          className={styles.link}
+          href="https://www.themoviedb.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by TMDB
+        </a>
+
+        <form className={styles.form} action={handleSearch}>
+          <input
+            className={styles.input}
+            type="text"
+            name="query"
+            autoComplete="off"
+            placeholder="Search movies..."
+            autoFocus
+          />
+
+          <button className={styles.button} type="submit">
+            Search
+          </button>
+        </form>
+      </div>
+    </header>
+  );
+}
+
+
+========== FILE: ./src/declarations.d.ts ==========
+
+declare module "modern-normalize";
+
+
+========== FILE: ./src/global.css ==========
+
+/* body {
+  font-family: sans-serif;
+  line-height: 1.5;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+} */
+
+
+========== FILE: ./src/index.css ==========
+
+
+
+========== FILE: ./src/main.tsx ==========
+
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./components/App/App.tsx";
+// Нормалізація стилів
+import "modern-normalize";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+
+
+========== FILE: ./src/services/movieService.ts ==========
+
+import axios from "axios";
+import type { Movie } from "../types/movie";
+
+interface FetchMoviesResponse {
+  results: Movie[];
+  page: number;
+  total_pages: number;
+  total_results: number;
+}
+
+const ACCESS_TOKEN = import.meta.env.VITE_TMDB_TOKEN;
+
+console.log("Token loaded:", Boolean(ACCESS_TOKEN));
+console.log("Token length:", ACCESS_TOKEN?.length);
+
+export async function fetchMovies(query: string): Promise<Movie[]> {
+  try {
+    const response = await axios.get<FetchMoviesResponse>(
+      "https://api.themoviedb.org/3/search/movie",
+      {
+        params: {
+          query,
+        },
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+        },
+      },
+    );
+
+    return response.data.results;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.log("TMDB error:", error.response?.data);
+    }
+
+    throw error;
+  }
+}
+
+
+========== FILE: ./src/types/movie.ts ==========
+
+export interface Movie {
+  id: number;
+  poster_path: string;
+  backdrop_path: string;
+  title: string;
+  overview: string;
+  release_date: string;
+  vote_average: number;
+}
+
+
+========== FILE: ./tsconfig.app.json ==========
+
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "allowArbitraryExtensions": true,
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
+
+
+========== FILE: ./tsconfig.json ==========
+
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+
+
+========== FILE: ./tsconfig.node.json ==========
+
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "module": "nodenext",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"]
+}
+
+
+========== FILE: ./vite.config.ts ==========
+
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import { defineConfig } from "vite";
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
+});
