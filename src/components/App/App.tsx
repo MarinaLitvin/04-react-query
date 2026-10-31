@@ -53,6 +53,10 @@ export default function App() {
     setSelectedMovie(null);
   };
 
+  console.log("data:", data);
+  console.log("totalPages:", totalPages);
+  console.log("movies:", movies.length);
+
   // Show notification when no movies are found
   useEffect(() => {
     if (data && data.results.length === 0) {
