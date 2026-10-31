@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 import ReactPaginateModule from "react-paginate";
 import type { ReactPaginateProps } from "react-paginate";
@@ -34,10 +34,11 @@ export default function App() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
   // Fetch movies with TanStack Query
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching, isPlaceholderData } = useQuery({
     queryKey: ["movies", query, page],
     queryFn: () => fetchMovies(query, page),
     enabled: Boolean(query),
+    placeholderData: keepPreviousData,
   });
 
   // Movies from backend response
@@ -52,10 +53,6 @@ export default function App() {
     setPage(1);
     setSelectedMovie(null);
   };
-
-  console.log("data:", data);
-  console.log("totalPages:", totalPages);
-  console.log("movies:", movies.length);
 
   // Show notification when no movies are found
   useEffect(() => {
@@ -82,6 +79,8 @@ export default function App() {
 
       <main>
         {isLoading && <Loader />}
+
+        {isFetching && isPlaceholderData && <p>Loading next page...</p>}
 
         {isError && !isLoading && <ErrorMessage />}
 
